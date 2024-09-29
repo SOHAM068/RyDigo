@@ -16,7 +16,7 @@ export const slides = [
     {
         id: 2,
         image : Images.bookRide,
-        text: "enjoy your trip",
+        text: "Enjoy your trip",
         description: "Now enjoy your trip, pay your driver after reaching the destination!"
     }
 ]
