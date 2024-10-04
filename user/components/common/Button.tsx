@@ -10,7 +10,8 @@ const Button: React.FC<ButtonProps> = ({
     onPress,
     width,
     backgroundColor,
-    textColor
+    textColor,
+    disabled
 }) => {
     const widthNumber = width || "100%";
     return(

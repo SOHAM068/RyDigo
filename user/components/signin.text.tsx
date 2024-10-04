@@ -7,8 +7,8 @@ export default function SignInText({
   title,
   subtitle,
 }: {
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
 }) {
   return (
     <>

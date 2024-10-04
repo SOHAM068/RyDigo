@@ -1,11 +1,27 @@
-import { Text, TextInput, View } from "react-native";
-import React from "react";
+import { View, Text, TextInput } from "react-native";
 import { commonStyles } from "@/styles/common.style";
 import { windowHeight, windowWidth } from "@/themes/app.constant";
 import { external } from "@/styles/external.style";
+import styles from "@/screens/login/styles";
 import color from "@/themes/app.colors";
+import SelectInput from "./common/SelectInput";
+import { useState } from "react";
+import { CountryItems } from "@/configs/CountryList";
+interface Props {
+  width?: number;
+  phone_number: string;
+  setPhone_number: (phone_number: string) => void;
+  countryCode: string;
+  setCountryCode: (countryCode: string) => void;
+}
 
-export default function PhoneNumberInput() {
+export default function PhoneNumberInput({
+  width,
+  phone_number,
+  setPhone_number,
+  countryCode,
+  setCountryCode,
+}: Props) {
   return (
     <View>
       <Text
@@ -13,30 +29,49 @@ export default function PhoneNumberInput() {
       >
         Phone Number
       </Text>
-
       <View
         style={[
-          external.ai_center,
           external.fd_row,
+          external.ai_center,
           external.mt_5,
           { flexDirection: "row" },
         ]}
       >
-        <View style={[]}>
-          <TextInput
-            style={[commonStyles.regularText]}
-            placeholder="+91"
-            placeholderTextColor={color.subtitle}
-            keyboardType="numeric"
+        <View
+          style={[
+            styles.countryCodeContainer,
+            {
+              borderColor: color.border,
+              marginTop: windowHeight(3),
+            },
+          ]}
+        >
+          <SelectInput
+            title="+91"
+            placeholder="Select your country"
+            value={countryCode}
+            onValueChange={(text) => setCountryCode(text)}
+            showWarning={false}
+            warning={"Please choose your country code!"}
+            items={CountryItems}
           />
         </View>
-
-        <View style={[]}>
+        <View
+          style={[
+            styles.phoneNumberInput,
+            {
+              width: windowWidth(346),
+              borderColor: color.border,
+            },
+          ]}
+        >
           <TextInput
             style={[commonStyles.regularText]}
             placeholderTextColor={color.subtitle}
             placeholder={"Enter your number"}
             keyboardType="numeric"
+            value={phone_number}
+            onChangeText={setPhone_number}
             maxLength={10}
           />
         </View>
