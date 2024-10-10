@@ -67,7 +67,7 @@ export default function RidePlanScreen() {
     longitude: "-122.4324",
   };
   const [marker, setMarker] = useState<any>(null);
-  const [currentLocation, setCurrentLocation] = useState<any>(null);
+  const [currentLocation, setCurrentLocation] = useState<any>(initialLocation);
   const [distance, setDistance] = useState<any>(null);
   const [locationSelected, setLocationSelected] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState("car");
@@ -255,13 +255,33 @@ export default function RidePlanScreen() {
   const getEstimatedArrivalTime = (travelTime: any) => {
     if (!travelTime) {
       console.warn("Travel time is null or undefined.");
-      return moment().format("hh:mm A"); // Return current time or a default message
+      return moment().format("MMM D, hh:mm A"); // Return current date and time or a default message
     }
-    const now = moment();
+  
+    // Parse travel time and split into days, hours, and minutes
     const travelMinutes = ParseDuration(travelTime);
+    const now = moment();
+  
+    // Add the travel time to the current time
     const arrivalTime = moment(now).add(travelMinutes, "minutes");
-    return arrivalTime.format("hh:mm A");
+  
+    // Log for debugging
+    // console.log("Current Time:", now.format("hh:mm A"));
+    // console.log("Parsed Travel Time (minutes):", travelMinutes);
+    // console.log("Arrival Time:", arrivalTime.format("hh:mm A"));
+  
+    // Check if the travel time crosses to the next day
+    const currentDay = now.format("YYYY-MM-DD");
+    const arrivalDay = arrivalTime.format("YYYY-MM-DD");
+  
+    // If the arrival is on the same day, only format time
+    if (currentDay === arrivalDay) {
+      return arrivalTime.format("hh:mm A"); // Only format time if it's the same day
+    } else {
+      return arrivalTime.format("MMM D, hh:mm A"); // Format with date and time if it's a different day
+    }
   };
+  
 
   useEffect(() => {
     if (marker && currentLocation) {
@@ -438,11 +458,12 @@ export default function RidePlanScreen() {
                 <View style={{ padding: windowWidth(10) }}>
                   <Pressable
                     style={{
-                      width: windowWidth(420),
+                      width: windowWidth(410),
                       borderWidth: selectedVehicle === "car" ? 2 : 0,
                       borderRadius: 10,
                       padding: 10,
                       marginVertical: 5,
+                      backgroundColor: selectedVehicle === "car" ? "#f0f0f0" : "#fff",
                     }}
                     onPress={() => {
                       setSelectedVehicle("car");
@@ -465,11 +486,15 @@ export default function RidePlanScreen() {
                       <Text style={{ fontSize: 20, fontWeight: "600" }}>
                         RyDigo X
                       </Text>
-
-                      <Text style={{ fontSize: 16 }}>
-                        {getEstimatedArrivalTime(travelTimes.driving)}
-                        DropOff
-                      </Text>
+                      <View style={{ flexDirection: "column" }}>
+                        <Text style={{ fontSize: 16 }}>
+                          {getEstimatedArrivalTime(travelTimes.driving)} DropOff
+                        </Text>
+                        <Text style={{ fontSize: 12, color: "#999" }}>
+                          {" "}
+                          ({travelTimes.driving})
+                        </Text>
+                      </View>
                     </View>
                     <Text
                       style={{
