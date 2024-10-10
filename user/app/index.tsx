@@ -42,7 +42,7 @@ export default function Index() {
 
     updateAuthStatus();
 
-    const intervalId = setInterval(updateAuthStatus, 60000); 
+    const intervalId = setInterval(updateAuthStatus, 60000); // Check every minute if the token is still valid and update the auth status accordingly
     return () => {
       clearInterval(intervalId);
     };
