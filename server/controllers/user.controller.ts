@@ -6,7 +6,6 @@ import jwt from "jsonwebtoken";
 import { nylas } from "../app";
 import { sendToken } from "../utils/sendToken";
 
-
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken, {

@@ -1,0 +1,394 @@
+require("dotenv").config();
+import twilio from "twilio";
+import prisma from "../utils/prisma";
+import jwt from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+import { nylas } from "../app";
+import { sendToken } from "../utils/sendToken";
+
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken, {
+    lazyLoading: true // lazy loading is enabled to reduce the time it takes to load the Twilio client library when the application starts
+});
+
+// sending otp to the driver phone number
+export const sendingOtpToPhone = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { phone_number } = req.body;
+        try {
+            await client.verify.v2
+                ?.services(process.env.TWILIO_SERVICE_SID!)
+                .verifications.create({
+                    channel: "sms",
+                    to: phone_number,
+                })
+
+            res.status(201).json({
+                success: true,
+            })
+        } catch (err: any) {
+            console.log(err);
+            res.status(400).json({
+                success: false,
+            });
+        }
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+        });
+    }
+}
+
+// verifying the otp for login
+export const verifyPhoneOtpForLogin = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { phone_number, otp } = req.body;
+
+        try {
+            await client.verify.v2
+                ?.services(process.env.TWILIO_SERVICE_SID!)
+                .verificationChecks.create({
+                    to: phone_number,
+                    code: otp,
+                })
+
+            const driver = await prisma.driver.findUnique({ // find the driver by phone number
+                where: {
+                    phone_number: phone_number
+                }
+            });
+
+            sendToken(driver, res);
+        } catch (err: any) {
+            console.log(err);
+            res.status(400).json({
+                success: false,
+                message: "Something went wrong!",
+            });
+        }
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
+
+// verifying phone otp for registration
+export const verifyingPhoneOtpForRegistration = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { phone_number, otp } = req.body;
+
+        try {
+            await client.verify.v2
+                ?.services(process.env.TWILIO_SERVICE_SID!)
+                .verificationChecks.create({
+                    to: phone_number,
+                    code: otp,
+                })
+
+            res.status(201).json({
+                success: true,
+            })
+        } catch (err: any) {
+            console.log(err);
+            res.status(400).json({
+                success: false,
+                message: "Something went wrong!",
+            });
+        }
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
+
+// sending otp to email
+export const sendingOtpToEmail = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const {
+            name,
+            email,
+            phone_number,
+            country,
+            vehicle_type,
+            registration_number,
+            registration_date,
+            driving_license,
+            vehicle_color,
+            rate
+        } = req.body;
+
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        const driver = {
+            name,
+            email,
+            phone_number,
+            country,
+            vehicle_type,
+            registration_number,
+            registration_date,
+            driving_license,
+            vehicle_color,
+            rate,
+            otp
+        };
+
+        const token = jwt.sign(
+            {
+                driver,
+                otp
+            },
+            process.env.EMAIL_ACTIVATION_SECRET!,
+            {
+                expiresIn: "5m"
+            }
+        );
+
+        try {
+            await nylas.messages.send({
+                identifier: process.env.USER_GRANT_ID!,
+                requestBody: {
+                    to: [{ name: name, email: email }],
+                    subject: "Email Activation for RyDigo",
+                    body: `
+                        <p>Hi ${name},</p>
+                        <p>Thank you for signing up,</p>
+                        <p>Your RyDigo verification code is ${otp}. If you didn't request for this OTP, please ignore this email!</p>
+                        <p>Thanks,<br>RyDigo Team</p>
+                    `
+                }
+            })
+            res.status(200).json({
+                success: true,
+                message: "OTP sent to email successfully",
+                token
+            })
+        } catch (err: any) {
+            console.log(err);
+            res.status(400).json({
+                success: false,
+                message: err.message,
+            });
+        }
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
+
+// verifying email otp and creating driver account
+export const verifyingEmailOtp = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { otp, token } = req.body;
+
+        const newDriver: any = jwt.verify(
+            token,
+            process.env.EMAIL_ACTIVATION_SECRET!
+        );
+
+        if (newDriver.otp !== otp) {
+            return res.status(400).json({
+                success: false,
+                message: "OTP is not correct or expired!",
+            });
+        }
+
+        const {
+            name,
+            country,
+            phone_number,
+            email,
+            vehicle_type,
+            registration_number,
+            registration_date,
+            driving_license,
+            vehicle_color,
+            rate,
+        } = newDriver.driver;
+
+        const driver = await prisma.driver.create({
+            data: {
+                name,
+                country,
+                phone_number,
+                email,
+                vehicle_type,
+                registration_number,
+                registration_date,
+                driving_license,
+                vehicle_color,
+                rate,
+            }
+        });
+
+        sendToken(driver, res);
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
+
+
+// get logged in driver data
+export const getLoggedInDriverData = async (
+    req: any,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const driver = req.driver;
+
+        res.status(200).json({
+            success: true,
+            driver,
+        });
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
+
+// update driver status
+export const updateDriverStatus = async (
+    req: any,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { status } = req.body;
+
+        const driver = await prisma.driver.update({
+            where: {
+                id: req.driver.id!,
+            },
+            data: {
+                status
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            driver,
+        });
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
+
+// get drivers data with id
+export const getDriverById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { ids } = req.query as any; // get the ids from the query params
+        console.log("ids: ", ids);
+
+        if (!ids) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide driver id",
+            })
+        };
+
+        const driverIds = ids.split(","); // split the ids by comma to get an array of ids
+
+        // fetch drivers from database
+        const drivers = await prisma.driver.findMany({
+            where: {
+                id: { in: driverIds }
+            }
+        });
+
+        res.json(drivers); // send the drivers data
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
+
+// creating new ride
+export const newRide = async (
+    req: any,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const {
+            userId,
+            charge,
+            status,
+            currentLocationName,
+            destinationLocationName,
+            distance,
+        } = req.body;
+
+        const newRide = await prisma.rides.create({
+            data: {
+                userId,
+                charge: parseFloat(charge),
+                status,
+                currentLocationName,
+                destinationLocationName,
+                distance,
+                driverId: req.driver.id,
+            }
+        });
+
+        res.status(201).json({
+            success: true,
+            newRide,
+        });
+    } catch (err: any) {
+        console.log(err);
+        res.status(400).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+}
