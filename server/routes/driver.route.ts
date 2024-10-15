@@ -1,21 +1,22 @@
 import express from "express";
-import { getDriverById, getLoggedInDriverData, newRide, sendingOtpToPhone, updateDriverStatus, verifyingEmailOtp, verifyingPhoneOtpForRegistration, verifyPhoneOtpForLogin } from "../controllers/driver.controller";
+import { getDriversById, getLoggedInDriverData, newRide, sendingOtpToPhone, updateDriverStatus, verifyingEmailOtp, verifyingPhoneOtpForRegistration, verifyPhoneOtpForLogin } from "../controllers/driver.controller";
+import { isAuthenticatedDriver } from "../middleware/isAuthenticated";
 
 const driverRouter = express.Router();
 
 driverRouter.post("/send-otp", sendingOtpToPhone);
 
-driverRouter.post("/login", verifyPhoneOtpForLogin);
-
 driverRouter.post("/verify-otp", verifyingPhoneOtpForRegistration);
+
+driverRouter.post("/login", verifyPhoneOtpForLogin);
 
 driverRouter.post("/registration-driver", verifyingEmailOtp);
 
-driverRouter.get("/me", getLoggedInDriverData);
+driverRouter.get("/me", isAuthenticatedDriver, getLoggedInDriverData);
 
-// driverRouter.get("/get-drivers-data", getDriverById);
+driverRouter.get("/get-drivers-data", getDriversById);
 
-// driverRouter.put("/update-status", isAuthenticatedDriver, updateDriverStatus);
+driverRouter.put("/update-status", isAuthenticatedDriver, updateDriverStatus);
 
 // driverRouter.post("/new-ride", isAuthenticatedDriver, newRide);
 

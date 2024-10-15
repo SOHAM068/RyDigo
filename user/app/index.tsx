@@ -3,8 +3,6 @@ import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import {jwtDecode} from "jwt-decode"; 
 
-//9410267189
-
 interface DecodedToken {
   exp: number;
 }

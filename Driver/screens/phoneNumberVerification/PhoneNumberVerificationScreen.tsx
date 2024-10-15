@@ -10,15 +10,76 @@ import { external } from "@/styles/external.style";
 import Button from "@/components/common/Button";
 import { router, useLocalSearchParams } from "expo-router";
 import { commonStyles } from "@/styles/common.style";
-import { useToast } from "react-native-toast-notifications";
+import { Toast, useToast } from "react-native-toast-notifications";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function PhoneNumberVerificationScreen() {
-  
-  const handleSubmit = () => {
+  const driver = useLocalSearchParams();
+  // console.log("driver from PhoneNumberVerification: ", driver);
 
-  }
+  const [otp, setOtp] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (otp === "") {
+      Toast.show("Please enter the OTP", {
+        placement: "top",
+      });
+    } else {
+      if (driver.name) {
+        setLoading(true);
+        const otpNumber = `${otp}`;
+
+        await axios
+          .post(`${process.env.EXPO_PUBLIC_SERVER_URI}/driver/verify-otp`, {
+            phone_number: driver.phone_number,
+            otp: otpNumber,
+            ...driver, // get data from previous screen (DocumentVerificationScreen) using useLocalSearchParams
+          })
+          .then((res) => {
+            const driverData = {
+              ...driver,
+              token: res.data.token,
+            };
+            setLoading(false);
+
+            router.push({
+              pathname: "/(routes)/EmailVerification",
+              params: driverData,
+            });
+          })
+          .catch((err) => {
+            setLoading(false);
+            Toast.show("OTP is incorrect ort expired", {
+              placement: "top",
+              type: "danger",
+            });
+          });
+      } else {
+        setLoading(false);
+        const otpNumber = `${otp}`;
+
+        await axios
+          .post(`${process.env.EXPO_PUBLIC_SERVER_URI}/driver/login`, {
+            phone_number: driver.phone_number,
+            otp: otpNumber,
+          })
+          .then(async (res) => {
+            setLoading(false);
+            await AsyncStorage.setItem("accessToken", res.data.accessToken);
+            router.push("/(tabs)/home");
+          })
+          .catch((err) => {
+            setLoading(false);
+            Toast.show("OTP is incorrect or expired", {
+              placement: "top",
+              type: "danger",
+            });
+          })
+      }
+    }
+  };
   return (
     <AuthContainer
       topSpace={windowHeight(240)}
@@ -30,7 +91,7 @@ export default function PhoneNumberVerificationScreen() {
             subtitle={"Enter the OTP sent to your mobile number"}
           />
           <OTPTextInput
-            // handleTextChange={(code) => setOtp(code)}
+            handleTextChange={(code) => setOtp(code)}
             inputCount={4}
             textInputStyle={styles.otpTextInput}
             tintColor={color.subtitle}
@@ -40,7 +101,7 @@ export default function PhoneNumberVerificationScreen() {
             <Button
               title="Verify"
               onPress={() => handleSubmit()}
-              // disabled={loading}
+              disabled={loading}
             />
           </View>
           <View style={[external.mb_15]}>

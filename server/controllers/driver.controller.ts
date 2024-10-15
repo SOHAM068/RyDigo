@@ -20,6 +20,7 @@ export const sendingOtpToPhone = async (
 ) => {
     try {
         const { phone_number } = req.body;
+        console.log("phone_number (server): ", phone_number);
         try {
             await client.verify.v2
                 ?.services(process.env.TWILIO_SERVICE_SID!)
@@ -89,7 +90,6 @@ export const verifyPhoneOtpForLogin = async (
 export const verifyingPhoneOtpForRegistration = async (
     req: Request,
     res: Response,
-    next: NextFunction
 ) => {
     try {
         const { phone_number, otp } = req.body;
@@ -102,9 +102,7 @@ export const verifyingPhoneOtpForRegistration = async (
                     code: otp,
                 })
 
-            res.status(201).json({
-                success: true,
-            })
+            await sendingOtpToEmail(req, res);
         } catch (err: any) {
             console.log(err);
             res.status(400).json({
@@ -125,7 +123,6 @@ export const verifyingPhoneOtpForRegistration = async (
 export const sendingOtpToEmail = async (
     req: Request,
     res: Response,
-    next: NextFunction
 ) => {
     try {
         const {
@@ -317,40 +314,29 @@ export const updateDriverStatus = async (
 }
 
 // get drivers data with id
-export const getDriverById = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
+export const getDriversById = async (req: Request, res: Response) => {
     try {
-        const { ids } = req.query as any; // get the ids from the query params
-        console.log("ids: ", ids);
-
+        const { ids } = req.query as any;
+        console.log(ids, 'ids')
         if (!ids) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide driver id",
-            })
-        };
+            return res.status(400).json({ message: "No driver IDs provided" });
+        }
 
-        const driverIds = ids.split(","); // split the ids by comma to get an array of ids
+        const driverIds = ids.split(",");
 
-        // fetch drivers from database
+        // Fetch drivers from database
         const drivers = await prisma.driver.findMany({
             where: {
-                id: { in: driverIds }
-            }
+                id: { in: driverIds },
+            },
         });
 
-        res.json(drivers); // send the drivers data
-    } catch (err: any) {
-        console.log(err);
-        res.status(400).json({
-            success: false,
-            message: "Internal server error",
-        });
+        res.json(drivers);
+    } catch (error) {
+        console.error("Error fetching driver data:", error);
+        res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 // creating new ride
 export const newRide = async (

@@ -11,13 +11,14 @@ import ProgressBar from "@/components/common/ProgressBar";
 import { useTheme } from "@react-navigation/native";
 import { countryNameItems } from "@/configs/country-name-list";
 import { router, useLocalSearchParams } from "expo-router";
+import axios from "axios";
+import { Toast } from "react-native-toast-notifications";
 
 export default function SignUpScreen() {
   const driverData = useLocalSearchParams();
-  console.log("driverData : ", driverData);
+  // console.log("driverData : ", driverData);
 
   const { colors } = useTheme();
-  const [emailFormatWarning, setEmailFormatWarning] = useState("");
   const [showWarning, setShowWarning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -36,7 +37,7 @@ export default function SignUpScreen() {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setLoading(true);
     const driver = {
       ...driverData, // get data from previous screen (SignUpScreen) using useLocalSearchParams
@@ -48,7 +49,25 @@ export default function SignUpScreen() {
       rate: formData.rate,
     };
 
-
+    // console.log("driver (DocumentVerification) : ", driver);
+    await axios
+      .post(`${process.env.EXPO_PUBLIC_SERVER_URI}/driver/send-otp`, {
+        phone_number: `+${driverData.phone_number}`,
+      })
+      .then((res) => {
+        router.push({
+          pathname: "/(routes)/PhoneNumberVerification",
+          params: driver,
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        setLoading(false);
+        Toast.show(err.message, {
+          placement: "bottom",
+          type: "danger",
+        });
+      });
   };
   return (
     <ScrollView>
@@ -85,6 +104,17 @@ export default function SignUpScreen() {
                   { label: "Motorcycle", value: "Motorcycle" },
                   { label: "cng", value: "cng" },
                 ]}
+              />
+              <Input
+                title="Registration Number"
+                placeholder="Enter your vehicle registration number"
+                keyboardType="number-pad"
+                value={formData.registrationNumber}
+                onChangeText={(text) =>
+                  handleChange("registrationNumber", text)
+                }
+                showWarning={showWarning && formData.registrationNumber === ""}
+                warning={"Please enter your vehicle registration number!"}
               />
               <Input
                 title="Vehicle Registration Date"

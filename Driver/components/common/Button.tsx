@@ -9,6 +9,7 @@ const Button: React.FC<ButtonProps> = ({
     title,
     onPress,
     width,
+    height,
     backgroundColor,
     textColor,
     disabled
