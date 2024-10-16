@@ -70,7 +70,7 @@ export default function SignUpScreen() {
             textAlign: "center",
           }}
         >
-          Ride Wave
+          RyDigo
         </Text>
         <View style={{ padding: windowWidth(20) }}>
           <ProgressBar fill={1} />

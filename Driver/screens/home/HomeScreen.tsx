@@ -586,6 +586,7 @@ export default function HomeScreen() {
         async (position) => {
           const { latitude, longitude } = position.coords;
           const newLocation = { latitude, longitude };
+          console.log("newLocation for sendLocationUpdate: ", newLocation);
           if (
             !lastLocation ||
             haversineDistance(lastLocation, newLocation) > 200

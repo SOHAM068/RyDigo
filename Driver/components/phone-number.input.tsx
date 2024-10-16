@@ -5,8 +5,8 @@ import { external } from "@/styles/external.style";
 import styles from "@/screens/login/styles";
 import color from "@/themes/app.colors";
 import { countryItems } from "@/configs/country-list";
-import React from "react";
 import SelectInput from "./common/SelectInput";
+import React from "react";
 
 interface Props {
   width?: number;

@@ -9,15 +9,50 @@ import styles from "./styles";
 import PhoneNumberInput from "@/components/phone-number.input";
 import { router } from "expo-router";
 import Images from "@/utils/ImagesUtils";
+import { Toast } from "react-native-toast-notifications";
+import axios from "axios";
 
 export default function LoginScreen() {
   const [phone_number, setPhone_number] = useState("");
   const [countryCode, setCountryCode] = useState(" ");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async() => {
-    router.push("/(routes)/PhoneNumberVerification");
-  }
+  const handleSubmit = async () => {
+    if (phone_number === "" || countryCode === "") {
+      Toast.show("Please fill the fields!", {
+        placement: "bottom",
+      });
+    } else {
+      setLoading(true);
+      const phoneNumber = `+${countryCode}${phone_number}`;
+      console.log("phoneNumber : ", phoneNumber);
+      await axios
+        .post(`${process.env.EXPO_PUBLIC_SERVER_URI}/driver/send-otp`, {
+          phone_number: phoneNumber,
+        })
+        .then((res: any) => {
+          setLoading(false);
+          const driver = {
+            phone_number: phoneNumber,
+          };
+          router.push({
+            pathname: "/(routes)/PhoneNumberVerification",
+            params: driver,
+          });
+        })
+        .catch((error) => {
+          console.log(error);
+          setLoading(false);
+          Toast.show(
+            "Something went wrong! please re check your phone number!",
+            {
+              type: "danger",
+              placement: "top",
+            }
+          );
+        });
+    }
+  };
   return (
     <AuthContainer
       topSpace={windowHeight(150)}

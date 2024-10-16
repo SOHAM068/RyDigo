@@ -72,7 +72,6 @@ export default function SignUpScreen() {
   return (
     <ScrollView>
       <View>
-        {/* logo */}
         <Text
           style={{
             fontFamily: "TT-Octosquares-Medium",

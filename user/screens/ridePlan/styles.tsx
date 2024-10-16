@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: "100%",
     height: windowHeight(150),
-    // marginTop: windowHeight(150),
+    marginTop: windowHeight(150),
     position: "absolute",
   },
   contentContainer: {

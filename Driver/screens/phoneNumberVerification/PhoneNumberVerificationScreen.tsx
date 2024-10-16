@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function PhoneNumberVerificationScreen() {
   const driver = useLocalSearchParams();
-  // console.log("driver from PhoneNumberVerification: ", driver);
+  console.log("driver from PhoneNumberVerificationScreen: ", driver);
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,7 @@ export default function PhoneNumberVerificationScreen() {
       if (driver.name) {
         setLoading(true);
         const otpNumber = `${otp}`;
-
+        
         await axios
           .post(`${process.env.EXPO_PUBLIC_SERVER_URI}/driver/verify-otp`, {
             phone_number: driver.phone_number,
