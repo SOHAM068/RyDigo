@@ -320,7 +320,6 @@
 //   );
 // }
 
-
 import {
   View,
   Text,
@@ -389,10 +388,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        // Handle the notification and extract data
+      Notifications.addNotificationReceivedListener((Notifications) => {
+        // Handle the notification and extract the data
         const orderData = JSON.parse(
-          notification.request.content.data.orderData
+          Notifications.request.content.data.orderData
         );
         setIsModalVisible(true);
         setCurrentLocation({
@@ -413,7 +412,7 @@ export default function HomeScreen() {
           latitudeDelta:
             Math.abs(
               orderData.currentLocation.latitude - orderData.marker.latitude
-            ) * 2,
+            ) * 2, // abs to make sure the value is positive
           longitudeDelta:
             Math.abs(
               orderData.currentLocation.longitude - orderData.marker.longitude
@@ -421,7 +420,7 @@ export default function HomeScreen() {
         });
         setdistance(orderData.distance);
         setcurrentLocationName(orderData.currentLocationName);
-        setdestinationLocationName(orderData.destinationLocation);
+        setdestinationLocationName(orderData.destinationLocationName);
         setUserData(orderData.user);
       });
 
@@ -442,41 +441,49 @@ export default function HomeScreen() {
 
   useEffect(() => {
     registerForPushNotificationsAsync();
-  }, []);
+  },[])
 
   async function registerForPushNotificationsAsync() {
     if (Device.isDevice) {
       const { status: existingStatus } =
         await Notifications.getPermissionsAsync();
+
       let finalStatus = existingStatus;
       if (existingStatus !== "granted") {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
+
       if (finalStatus !== "granted") {
         Toast.show("Failed to get push token for push notification!", {
           type: "danger",
         });
         return;
       }
-      const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ??
-        Constants?.easConfig?.projectId;
+
+      const projectId = // Get the project ID from the EAS or Expo config
+        Constants.expoConfig?.extra?.eas?.projectId ?? // If the project ID is not available in the EAS config, get it from the Expo config and ?? means if the left side is null, then get the right side
+        Constants.easConfig?.projectId;
+
       if (!projectId) {
-        Toast.show("Failed to get project id for push notification!", {
+        Toast.show("Failed to get project ID for push notification!", {
           type: "danger",
         });
+        return;
       }
+
       try {
         const pushTokenString = (
           await Notifications.getExpoPushTokenAsync({
             projectId,
           })
         ).data;
-        console.log(pushTokenString);
-        // return pushTokenString;
-      } catch (e: unknown) {
-        Toast.show(`${e}`, {
+
+        console.log("pushTokenString: ", pushTokenString);
+        // ExponentPushToken[aUBCdkAVg2jVlerntwN3HQ]
+        // Send the push token to the server
+      } catch (err: unknown) {
+        Toast.show(`${err}`, {
           type: "danger",
         });
       }
@@ -522,7 +529,7 @@ export default function HomeScreen() {
     };
   }, []);
 
-  const haversineDistance = (coords1: any, coords2: any) => {
+  const haversineDistance = (coords1: any, coords2: any) => { // Calculate the distance between two coordinates using the Haversine formula (https://en.wikipedia.org/wiki/Haversine_formula)
     const toRad = (x: any) => (x * Math.PI) / 180;
 
     const R = 6371e3; // Radius of the Earth in meters
@@ -586,7 +593,6 @@ export default function HomeScreen() {
         async (position) => {
           const { latitude, longitude } = position.coords;
           const newLocation = { latitude, longitude };
-          console.log("newLocation for sendLocationUpdate: ", newLocation);
           if (
             !lastLocation ||
             haversineDistance(lastLocation, newLocation) > 200
@@ -689,7 +695,7 @@ export default function HomeScreen() {
           marker,
           distance,
         };
-        const driverPushToken = "ExponentPushToken[A22bNzKGUMegAXVEqzDnUx]";
+        const driverPushToken = "ExponentPushToken[48A0efDFwmJ4-maULk9Wzk]";
 
         await sendPushNotification(driverPushToken, data);
 
@@ -701,10 +707,10 @@ export default function HomeScreen() {
           distance,
           rideData: res.data.newRide,
         };
-        // router.push({
-        //   pathname: "/(routes)/ride-details",
-        //   params: { orderData: JSON.stringify(rideData) },
-        // });
+        router.push({
+          pathname: "/(routes)/RideDetails",
+          params: { orderData: JSON.stringify(rideData) },
+        });
       });
   };
 
@@ -795,8 +801,8 @@ export default function HomeScreen() {
                   fontSize: windowHeight(14),
                 }}
               >
-                Amount:
-                {(distance * parseInt(driver?.rate!)).toFixed(2)} BDT
+                Amount:{" "}
+                {(distance * parseInt(driver?.rate!)).toFixed(2)} Rs
               </Text>
               <View
                 style={{

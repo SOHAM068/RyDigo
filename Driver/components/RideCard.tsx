@@ -31,7 +31,7 @@ export default function RideCard({ item }: { item: any }) {
             <View
               style={[styles.verticalBorder, { borderColor: colors.border }]}
             />
-            <Text style={styles.price}>BDT {item.charge}</Text>
+            <Text style={styles.price}>Rs {item.charge}</Text>
           </View>
         </View>
         <View style={[styles.alignment, { flexDirection: "row" }]}>
@@ -39,7 +39,7 @@ export default function RideCard({ item }: { item: any }) {
           <View style={styles.rate}>
             <Location color={colors.text} />
             <Text style={[styles.distance, { color: colors.text }]}>
-              {item.distance}
+              {item.distance} Km
             </Text>
           </View>
         </View>

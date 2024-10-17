@@ -4,19 +4,19 @@ import {
   Dimensions,
   Image,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Animated,
+  Keyboard,
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { external } from "@/styles/external.style";
 import { windowHeight, windowWidth } from "@/themes/app.constant";
-import MapView, { Callout, Marker } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import styles from "./styles";
 import DownArrow from "@/assets/icons/downArrow";
@@ -39,20 +39,19 @@ import axios from "axios";
 import _, { debounce } from "lodash";
 import * as Location from "expo-location"; // Import the expo-location module to access the user's location
 import { Toast } from "react-native-toast-notifications";
-import * as IntentLauncher from "expo-intent-launcher";
 import moment from "moment";
 import { ParseDuration } from "@/utils/ParseDuration";
-import { CustomMarker } from "@/assets/icons/custom-marker";
-import { BlueMarker } from "@/assets/icons/custom-marker2";
 import Button from "@/components/common/Button";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useGetUserData } from "@/hooks/useGetUserData";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import * as Device from "expo-device";
 
 export default function RidePlanScreen() {
+  const notificationListener = useRef<any>();
   const [places, setPlaces] = useState<any>([]);
   const [query, setQuery] = useState("");
-
-  const [pin, setPin] = useState({}); // pin for the location selected
   const [region, setRegion] = useState({
     latitude: 37.78825,
     longitude: -122.4324,
@@ -75,10 +74,37 @@ export default function RidePlanScreen() {
   const [selectedDriver, setSelectedDriver] = useState<DriverType>();
   const [driverLists, setDriverLists] = useState([]);
   const [driverLoader, setDriverLoader] = useState(true);
-  const ws = useRef<any>(null); // Create a WebSocket reference to store the connection instance
+  const ws = useRef<any>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const autocompleteRef = useRef<GooglePlacesAutocompleteRef>(null);
 
   const { user } = useGetUserData();
+
+  // Function to send a push notification to the driver
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+
+  useEffect(() => {
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        const orderData = {
+          currentLocation: notification.request.content.data.currentLocation,
+          marker: notification.request.content.data.marker,
+          distance: notification.request.content.data.distance,
+          driver: notification.request.content.data.orderData,
+        };
+
+        router.push({
+          pathname: "/(routes)/RideDetails",
+          params: { orderData: JSON.stringify(orderData) },
+        });
+      });
+  }, []);
 
   // access the user's current location
   useEffect(() => {
@@ -122,7 +148,7 @@ export default function RidePlanScreen() {
     }
   };
 
-  const fetchPlaces = async (input: any) => {
+  const fetchPlaces = async (input: string) => {
     try {
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json`,
@@ -140,7 +166,7 @@ export default function RidePlanScreen() {
     }
   };
 
-  const debouncedFetchPlaces = useCallback(_.debounce(fetchPlaces, 100), []); // Debounce the fetchPlaces function to avoid making too many requests in a short amount of time (100ms) to the Google Places API to avoid being rate limited by Google
+  const debouncedFetchPlaces = useCallback(_.debounce(fetchPlaces, 100), []);
   useEffect(() => {
     if (query.length > 2) {
       debouncedFetchPlaces(query);
@@ -149,8 +175,9 @@ export default function RidePlanScreen() {
     }
   }, [query, debouncedFetchPlaces]);
 
-  const handleInputChange = (text: any) => {
+  const handleInputChange = (text: string) => {
     setQuery(text);
+    debouncedFetchPlaces(text);
   };
 
   const fetchTravelTimes = async (origin: any, destination: any) => {
@@ -196,7 +223,7 @@ export default function RidePlanScreen() {
     setTravelTimes(travelTimes);
   };
 
-  const handlePlacesSelect = async (placeId: any) => {
+  const handlePlaceSelect = async (placeId: string) => {
     try {
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/place/details/json`,
@@ -210,21 +237,35 @@ export default function RidePlanScreen() {
       const { lat, lng } = response.data.result.geometry.location;
 
       const selectedDestination = { latitude: lat, longitude: lng };
-      setRegion({
-        ...region,
-        latitude: lat,
-        longitude: lng,
-      });
-      setMarker({
-        latitude: lat,
-        longitude: lng,
-      });
+      setMarker(selectedDestination);
       setPlaces([]);
       requestNearbyDrivers();
       setLocationSelected(true);
       setKeyboardAvoidingHeight(false);
+
       if (currentLocation) {
         await fetchTravelTimes(currentLocation, selectedDestination);
+
+        // Calculate the region that includes both points
+        const minLat = Math.min(currentLocation.latitude, lat);
+        const maxLat = Math.max(currentLocation.latitude, lat);
+        const minLng = Math.min(currentLocation.longitude, lng);
+        const maxLng = Math.max(currentLocation.longitude, lng);
+
+        const midLat = (minLat + maxLat) / 2;
+        const midLng = (minLng + maxLng) / 2;
+        const latDelta = (maxLat - minLat) * 1.5; // Add some padding
+        const lngDelta = (maxLng - minLng) * 1.5;
+
+        const newRegion = {
+          latitude: midLat,
+          longitude: midLng,
+          latitudeDelta: Math.max(latDelta, 0.02),
+          longitudeDelta: Math.max(lngDelta, 0.02),
+        };
+
+        // Animate to the new region
+        mapRef.current?.animateToRegion(newRegion, 1250);
       }
     } catch (error) {
       console.log(error);
@@ -314,6 +355,67 @@ export default function RidePlanScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
+
+  async function registerForPushNotificationsAsync() {
+    if (Device.isDevice) {
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== "granted") {
+        Toast.show("Failed to get push token for push notification!", {
+          type: "danger",
+        });
+      }
+
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        Constants.easConfig?.projectId;
+
+      if (!projectId) {
+        Toast.show("Failed to get project id for push notification!", {
+          type: "danger",
+        });
+      }
+
+      try {
+        const pushTokenString = (
+          await Notifications.getExpoPushTokenAsync({
+            projectId,
+          })
+        ).data;
+
+        console.log("Push token:", pushTokenString);
+        // Send the push token to the server
+      } catch (err: any) {
+        Toast.show(`${err}`, {
+          type: "danger",
+        });
+      }
+    } else {
+      Toast.show("Must use physical device for Push Notifications", {
+        type: "danger",
+      });
+    }
+
+    if (Platform.OS === "android") {
+      Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#FF231F7C",
+      });
+    }
+  }
+
   const getNearbyDrivers = () => {
     ws.current.onmessage = async (e: any) => {
       try {
@@ -372,14 +474,81 @@ export default function RidePlanScreen() {
     }
   };
 
+  const sendPushNotifications = async (expoPushToken: any, data: any) => {
+    const message = {
+      to: expoPushToken,
+      sound: "default",
+      title: "New Ride Request",
+      body: "You have a new ride request!",
+      data: { orderData: data },
+    };
+
+    await axios.post("https://exp.host/--/api/v2/push/send", message);
+  };
+
   const handleOrder = async () => {
+    const currentLocationName = await axios.get(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${currentLocation?.latitude},${currentLocation?.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_CLOUD_API_KEY}`
+    );
+    const destinationLocationName = await axios.get(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${marker?.latitude},${marker?.longitude}&key=${process.env.EXPO_PUBLIC_GOOGLE_CLOUD_API_KEY}`
+    );
+
     const data = {
-      driver: selectedDriver || driverLists[0],
       user,
       currentLocation,
+      marker,
+      distance: distance.toFixed(2),
+      currentLocationName:
+        currentLocationName.data.results[0].formatted_address,
+      destinationLocationName:
+        destinationLocationName.data.results[0].formatted_address,
     };
+
+    const driverPushToken = "ExponentPushToken[aUBCdkAVg2jVlerntwN3HQ]";
+
+    await sendPushNotifications(driverPushToken, JSON.stringify(data));
     console.log("Order data:", data);
   };
+
+  useEffect(() => {
+    if (autocompleteRef.current) {
+      autocompleteRef.current.setAddressText(query);
+    }
+  }, [query]);
+
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const mapHeight = useRef(new Animated.Value(windowHeight(500))).current;
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardOpen(true);
+        Animated.timing(mapHeight, {
+          toValue: windowHeight(300),
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardOpen(false);
+        Animated.timing(mapHeight, {
+          toValue: windowHeight(500),
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   return (
     <KeyboardAvoidingView
@@ -387,126 +556,52 @@ export default function RidePlanScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <>
-        <View>
-          <View
+        <Animated.View style={{ height: mapHeight }}>
+          <MapView
+            style={{ flex: 1 }}
+            ref={mapRef}
+            region={region}
+            onRegionChangeComplete={(region) => setRegion(region)}
+            provider={Platform.OS === "android" ? "google" : undefined}
+            showsUserLocation={true}
+          >
+            {marker && <Marker coordinate={marker} />}
+            {currentLocation && <Marker coordinate={currentLocation} />}
+            {currentLocation && marker && (
+              <MapViewDirections
+                origin={currentLocation}
+                destination={marker}
+                apikey={process.env.EXPO_PUBLIC_GOOGLE_CLOUD_API_KEY!}
+                strokeWidth={4}
+                strokeColor="blue"
+              />
+            )}
+          </MapView>
+        </Animated.View>
+        <View
+          style={{
+            position: "absolute",
+            top: 30,
+            left: 11,
+            alignItems: "center",
+            backgroundColor: "transparent", // Transparent background
+          }}
+        >
+          <TouchableOpacity
+            onPress={focusOnLocation}
             style={{
-              height: windowHeight(!keyboardAvoidingHeight ? 500 : 300),
+              backgroundColor: "rgba(0, 0, 0, 0.2)", // Transparent button background
+              padding: 10,
+              borderRadius: 5,
+              backfaceVisibility: "hidden",
             }}
           >
-            <MapView
-              region={region}
-              onRegionChangeComplete={(region) => setRegion(region)}
-              style={{ flex: 1 }}
-              ref={mapRef}
-              provider={Platform.OS === "android" ? "google" : undefined}
-              showsUserLocation={true}
-            >
-              {/* Marker for the destination (if set) */}
-              {marker && (
-                <Marker
-                  coordinate={marker}
-                  title="Your Destination!"
-                  description="This is your destination location"
-                  // // Custom image for the marker
-                  // icon={require("@/assets/images/line2.png")}
-                  // pinColor="blue"
-                >
-                  <BlueMarker />
-                  <Callout>
-                    <View
-                      style={{
-                        padding: 5,
-                        width: 150,
-                        flexDirection: "column",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontWeight: "bold",
-                          color: "red",
-                          textAlign: "center",
-                        }}
-                      >
-                        Your Destination
-                      </Text>
-                      <Text style={{ textAlign: "center" }}>
-                        You will reach this location!
-                      </Text>
-                    </View>
-                  </Callout>
-                </Marker>
-              )}
-
-              {/* Marker for the current location */}
-              {currentLocation && (
-                <Marker
-                  coordinate={currentLocation}
-                  title="You are here!"
-                  description="This is your current location"
-                >
-                  <CustomMarker />
-                  <Callout>
-                    <View
-                      style={{
-                        padding: 4,
-                        width: 150,
-                        flexDirection: "column",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontWeight: "bold",
-                          color: "blue",
-                          textAlign: "center",
-                        }}
-                      >
-                        Your Location
-                      </Text>
-                      <Text style={{ textAlign: "center" }}>
-                        You are here right now!
-                      </Text>
-                    </View>
-                  </Callout>
-                </Marker>
-              )}
-
-              {/* Display directions between current location and marker */}
-              {currentLocation && marker && (
-                <MapViewDirections
-                  origin={currentLocation}
-                  destination={marker}
-                  apikey={process.env.EXPO_PUBLIC_GOOGLE_CLOUD_API_KEY!} // Make sure you have the API key setup
-                  strokeWidth={4}
-                  strokeColor="blue"
-                />
-              )}
-            </MapView>
-            <View
-              style={{
-                position: "absolute",
-                top: 30,
-                left: 11,
-                alignItems: "center",
-                backgroundColor: "transparent", // Transparent background
-              }}
-            >
-              <TouchableOpacity
-                onPress={focusOnLocation}
-                style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.2)", // Transparent button background
-                  padding: 10,
-                  borderRadius: 5,
-                  backfaceVisibility: "hidden",
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="crosshairs-gps"
-                  size={24}
-                  color="black"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
+            <MaterialCommunityIcons
+              name="crosshairs-gps"
+              size={24}
+              color="black"
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.contentContainer}>
@@ -526,15 +621,9 @@ export default function RidePlanScreen() {
                 ) : driverLists.length === 0 ? (
                   <View
                     style={{
-                      flex: 1,
                       alignItems: "center",
                       justifyContent: "center",
-                      position: "absolute",
-                      zIndex: 10, // Make sure it's above other components
-                      top: 0, // Start from the top of the screen
-                      left: 0,
-                      right: 0,
-                      bottom: 0, // Cover the entire screen
+                      zIndex: 10,
                     }}
                   >
                     <Text
@@ -749,11 +838,11 @@ export default function RidePlanScreen() {
                       }}
                     >
                       <GooglePlacesAutocomplete
+                        ref={autocompleteRef}
                         placeholder="Where to?"
                         onPress={(data, details = null) => {
                           setKeyboardAvoidingHeight(true);
-                          // Handle place selection
-                          setQuery(data.description); // Set the selected description
+                          setQuery(data.description);
                           setPlaces([
                             {
                               description: data.description,
@@ -779,12 +868,11 @@ export default function RidePlanScreen() {
                           },
                         }}
                         textInputProps={{
-                          value: query,
                           onChangeText: handleInputChange,
                           onFocus: () => setKeyboardAvoidingHeight(true),
                         }}
                         onFail={(error) => {
-                          console.log("Error fetching places:", error); // Log error details
+                          console.log("Error fetching places:", error);
                           Toast.show(
                             "Error fetching places. Please try again.",
                             {
@@ -795,7 +883,7 @@ export default function RidePlanScreen() {
                         }}
                         fetchDetails={true}
                         enablePoweredByContainer={false}
-                        debounce={300}
+                        debounce={200}
                       />
                     </View>
                   </View>
@@ -809,7 +897,7 @@ export default function RidePlanScreen() {
                       alignItems: "center",
                       marginBottom: windowHeight(20),
                     }}
-                    onPress={() => handlePlacesSelect(place.place_id)}
+                    onPress={() => handlePlaceSelect(place.place_id)}
                   >
                     <PickUpLocation />
                     <Text style={{ paddingLeft: 15, fontSize: 18 }}>
