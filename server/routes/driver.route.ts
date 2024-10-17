@@ -21,12 +21,12 @@ driverRouter.put("/update-status", isAuthenticatedDriver, updateDriverStatus);
 driverRouter.post("/new-ride", isAuthenticatedDriver, newRide);
 
 driverRouter.put(
-    "/update-ride-status",
-    isAuthenticatedDriver,
-    updatingRideStatus
-  );
-  
-  driverRouter.get("/get-rides", isAuthenticatedDriver, getAllRides);
+  "/update-ride-status",
+  isAuthenticatedDriver,
+  updatingRideStatus
+);
+
+driverRouter.get("/get-rides", isAuthenticatedDriver, getAllRides);
 
 
 export default driverRouter;

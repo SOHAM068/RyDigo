@@ -1,15 +1,20 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Linking } from "react-native";
 import React, { useEffect, useState } from "react";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { fontSizes, windowHeight, windowWidth } from "@/themes/app.constant";
 import MapView, { Marker } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import color from "@/themes/app.colors";
+import Button from "@/components/common/Button";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Toast } from "react-native-toast-notifications";
 
 export default function RideDetailsScreen() {
   const { orderData: orderDataObj } = useLocalSearchParams() as any;
+  const [orderStatus, setorderStatus] = useState("Processing");
   const orderData = JSON.parse(orderDataObj);
-  const [region, setRegion] = useState({
+  const [region, setRegion] = useState<any>({
     latitude: 37.78825,
     longitude: -122.4324,
     latitudeDelta: 0.0922,
@@ -17,76 +22,144 @@ export default function RideDetailsScreen() {
   });
 
   useEffect(() => {
-    if (orderData?.driver?.currentLocation && orderData?.driver?.marker) {
-      const latitudeDelta = Math.abs(orderData.driver.marker.latitude - orderData.driver.currentLocation.latitude) * 2;
-      const longitudeDelta = Math.abs(orderData.driver.marker.longitude - orderData.driver.currentLocation.longitude) * 2;
+    if (orderData?.currentLocation && orderData?.marker) {
+      const latitudeDelta =
+        Math.abs(
+          orderData.marker.latitude - orderData.currentLocation.latitude
+        ) * 2;
+      const longitudeDelta =
+        Math.abs(
+          orderData.marker.longitude - orderData.currentLocation.longitude
+        ) * 2;
 
       setRegion({
-        latitude: (orderData.driver.marker.latitude + orderData.driver.currentLocation.latitude) / 2,
-        longitude: (orderData.driver.marker.longitude + orderData.driver.currentLocation.longitude) / 2,
+        latitude:
+          (orderData.marker.latitude + orderData.currentLocation.latitude) / 2,
+        longitude:
+          (orderData.marker.longitude + orderData.currentLocation.longitude) /
+          2,
         latitudeDelta: Math.max(latitudeDelta, 0.0922),
         longitudeDelta: Math.max(longitudeDelta, 0.0421),
       });
+      setorderStatus(orderData.rideData.status);
     }
   }, []);
 
+  const handleSubmit = async () => {
+    const accessToken = await AsyncStorage.getItem("accessToken");
+    await axios
+      .put(
+        `${process.env.EXPO_PUBLIC_SERVER_URI}/driver/update-ride-status`,
+        {
+          rideStatus: orderStatus === "Ongoing" ? "Completed" : "Ongoing",
+          rideId: orderData?.rideData.id,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      )
+      .then((res) => {
+        if (res.data.updatedRide.status === "Ongoing") {
+          setorderStatus(res.data.updatedRide.status);
+          Toast.show("Let's have a safe journey!", {
+            type: "success",
+          });
+        } else {
+          Toast.show(`Well done ${orderData.driver.name}`);
+          router.push("/(tabs)/home");
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.mapContainer}>
+    <View>
+      <View style={{ height: windowHeight(480) }}>
         <MapView
-          style={styles.map}
+          style={{ flex: 1 }}
           region={region}
           onRegionChangeComplete={(region) => setRegion(region)}
         >
-          {orderData?.driver?.marker && (
-            <Marker coordinate={orderData.driver.marker} />
+          {orderData?.marker && <Marker coordinate={orderData?.marker} />}
+          {orderData?.currentLocation && (
+            <Marker coordinate={orderData?.currentLocation} />
           )}
-          {orderData?.driver?.currentLocation && (
-            <Marker coordinate={orderData.driver.currentLocation} />
-          )}
-          {orderData?.driver?.currentLocation && orderData?.driver?.marker && (
+          {orderData?.currentLocation && orderData?.marker && (
             <MapViewDirections
-              origin={orderData.driver.currentLocation}
-              destination={orderData.driver.marker}
+              origin={orderData?.currentLocation}
+              destination={orderData?.marker}
               apikey={process.env.EXPO_PUBLIC_GOOGLE_CLOUD_API_KEY!}
-              strokeWidth={3}
-              strokeColor={color.buttonBg}
+              strokeWidth={4}
+              strokeColor="blue"
             />
           )}
         </MapView>
       </View>
-      <View style={styles.detailsContainer}>
-        <Text style={styles.title}>Ride Details</Text>
-        <Text style={styles.detail}>Driver: {orderData?.driver?.name}</Text>
-        <Text style={styles.detail}>Vehicle: {orderData?.driver?.vehicle_type} ({orderData?.driver?.vehicle_color})</Text>
-        <Text style={styles.detail}>Distance: {orderData?.driver?.distance.toFixed(2)} km</Text>
-        <Text style={styles.detail}>Estimated Fare: {(orderData.driver?.distance * parseInt(orderData?.driver?.rate)).toFixed(2)} BDT</Text>
+      <View style={{ padding: windowWidth(20) }}>
+        <Text
+          style={{
+            fontSize: fontSizes.FONT20,
+            fontWeight: "500",
+            paddingVertical: windowHeight(5),
+          }}
+        >
+          Passenger Name: {orderData?.user?.name}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: fontSizes.FONT20,
+              fontWeight: "500",
+              paddingVertical: windowHeight(5),
+            }}
+          >
+            Phone Number:
+          </Text>
+          <Text
+            style={{
+              color: color.buttonBg,
+              paddingLeft: 5,
+              fontSize: fontSizes.FONT20,
+              fontWeight: "500",
+              paddingVertical: windowHeight(5),
+            }}
+            onPress={() =>
+              Linking.openURL(`tel:${orderData?.user?.phone_number}`)
+            }
+          >
+            {orderData?.user?.phone_number}
+          </Text>
+        </View>
+        <Text
+          style={{
+            fontSize: fontSizes.FONT20,
+            fontWeight: "500",
+            paddingVertical: windowHeight(5),
+          }}
+        >
+          Payable amount:{" "}
+          {(orderData.distance * parseInt(orderData?.driver?.rate)).toFixed(2)}{" "}
+          BDT
+        </Text>
+
+        <View style={{ paddingTop: windowHeight(30) }}>
+          <Button
+            title={
+              orderStatus === "Processing"
+                ? "Pick Up Passenger"
+                : "Drop Off Passenger"
+            }
+            height={windowHeight(40)}
+            disabled={orderStatus?.length === 0}
+            backgroundColor={color.bgDark}
+            onPress={() => handleSubmit()}
+          />
+        </View>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: color.whiteColor,
-  },
-  mapContainer: {
-    height: windowHeight(300),
-  },
-  map: {
-    flex: 1,
-  },
-  detailsContainer: {
-    padding: windowWidth(20),
-  },
-  title: {
-    fontSize: fontSizes.FONT24,
-    fontWeight: "bold",
-    marginBottom: windowHeight(10),
-  },
-  detail: {
-    fontSize: fontSizes.FONT18,
-    marginBottom: windowHeight(5),
-  },
-});
