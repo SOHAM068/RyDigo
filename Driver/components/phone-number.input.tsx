@@ -1,12 +1,9 @@
-import { View, Text, TextInput } from "react-native";
-import { commonStyles } from "@/styles/common.style";
+import React from "react";
+import { View, Text, TextInput, StyleSheet } from "react-native";
 import { windowHeight, windowWidth } from "@/themes/app.constant";
-import { external } from "@/styles/external.style";
-import styles from "@/screens/login/styles";
 import color from "@/themes/app.colors";
 import { countryItems } from "@/configs/country-list";
 import SelectInput from "./common/SelectInput";
-import React from "react";
 
 interface Props {
   width?: number;
@@ -24,30 +21,12 @@ export default function PhoneNumberInput({
   setCountryCode,
 }: Props) {
   return (
-    <View>
-      <Text
-        style={[commonStyles.mediumTextBlack, { marginTop: windowHeight(8) }]}
-      >
-        Phone Number
-      </Text>
-      <View
-        style={[
-          external.fd_row,
-          external.ai_center,
-          external.mt_5,
-          { flexDirection: "row" },
-        ]}
-      >
-        <View
-          style={[
-            styles.countryCodeContainer,
-            {
-              borderColor: color.border,
-            },
-          ]}
-        >
+    <View style={styles.container}>
+      <Text style={styles.label}>Phone Number</Text>
+      <View style={styles.inputContainer}>
+        <View style={styles.countryCodeContainer}>
           <SelectInput
-            placeholder="Select your country"
+            placeholder="Select country"
             value={countryCode}
             onValueChange={(text) => setCountryCode(text)}
             showWarning={false}
@@ -55,17 +34,9 @@ export default function PhoneNumberInput({
             items={countryItems}
           />
         </View>
-        <View
-          style={[
-            styles.phoneNumberInput,
-            {
-              width: width || windowWidth(346),
-              borderColor: color.border,
-            },
-          ]}
-        >
+        <View style={[styles.phoneNumberInput, { width: width || windowWidth(220) }]}>
           <TextInput
-            style={[commonStyles.regularText]}
+            style={styles.input}
             placeholderTextColor={color.subtitle}
             placeholder={"Enter your number"}
             keyboardType="numeric"
@@ -78,3 +49,40 @@ export default function PhoneNumberInput({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: windowHeight(20),
+  },
+  label: {
+    fontSize: windowHeight(16),
+    fontWeight: '600',
+    color: color.blackColor,
+    marginBottom: windowHeight(8),
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countryCodeContainer: {
+    width: windowWidth(100),
+    marginRight: windowWidth(10),
+    borderWidth: 1,
+    borderColor: color.border,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  phoneNumberInput: {
+    flex: 1,
+    height: windowHeight(48),
+    borderWidth: 1,
+    borderColor: color.border,
+    borderRadius: 8,
+    paddingHorizontal: windowWidth(12),
+    justifyContent: 'center',
+  },
+  input: {
+    fontSize: windowHeight(16),
+    color: color.blackColor,
+  },
+});

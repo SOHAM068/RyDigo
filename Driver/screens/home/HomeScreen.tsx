@@ -496,10 +496,10 @@ export default function HomeScreen() {
             Recent Rides
           </Text>
           <ScrollView
-            style={{ maxHeight: windowHeight(260) }}
+            style={{ maxHeight: windowHeight(240) }}
             showsVerticalScrollIndicator={false}
           >
-            {recentRides?.map(renderRideCard)}
+            {recentRides?.slice().reverse().map(renderRideCard)}
             {recentRides?.length === 0 && (
               <Text style={{ padding: windowHeight(10) }}>
                 You didn't take any ride yet!

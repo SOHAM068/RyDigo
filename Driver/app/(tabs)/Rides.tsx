@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   RefreshControl,
   StyleSheet,
   Animated,
+  Easing,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,17 +17,23 @@ import RideCard from "@/components/RideCard";
 import color from "@/themes/app.colors";
 import { fontSizes, windowHeight, windowWidth } from "@/themes/app.constant";
 
+interface Ride {
+  id: string;
+  // Add other properties as needed
+}
+
 export default function Rides() {
-  const [recentRides, setRecentRides] = useState([]);
+  const [recentRides, setRecentRides] = useState<Ride[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.5));
-  const [slideAnim] = useState(new Animated.Value(windowHeight(100)));
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const slideAnim = useRef(new Animated.Value(windowHeight(100))).current;
+  const animatedItems = useRef<Animated.Value[]>([]).current;
 
   const getRecentRides = useCallback(async () => {
     try {
       const accessToken = await AsyncStorage.getItem("accessToken");
-      const res = await axios.get(
+      const res = await axios.get<{ rides: Ride[] }>(
         `${process.env.EXPO_PUBLIC_SERVER_URI}/driver/get-rides`,
         {
           headers: {
@@ -35,6 +42,11 @@ export default function Rides() {
         }
       );
       setRecentRides(res.data.rides);
+      // Reset animated items
+      animatedItems.length = 0;
+      res.data.rides.forEach(() => {
+        animatedItems.push(new Animated.Value(0));
+      });
     } catch (error) {
       console.error("Error fetching rides:", error);
     }
@@ -70,21 +82,36 @@ export default function Rides() {
     }, [getRecentRides, fadeAnim, scaleAnim, slideAnim])
   );
 
-  const renderItem = ({ item, index }: any) => {
-    const translateY = new Animated.Value(50);
-    Animated.timing(translateY, {
-      toValue: 0,
-      duration: 300,
-      delay: index * 100,
-      useNativeDriver: true,
-    }).start();
+  useEffect(() => {
+    if (animatedItems.length > 0) {
+      animatedItems.forEach((item, index) => {
+        Animated.spring(item, {
+          toValue: 1,
+          friction: 4,
+          tension: 40,
+          delay: index * 100,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [recentRides]);
+
+  const renderItem = useCallback(({ item, index }: { item: Ride; index: number }) => {
+    const animValue = animatedItems[index] || new Animated.Value(0);
 
     return (
-      <Animated.View style={{ transform: [{ translateY }] }}>
+      <Animated.View 
+        style={{ 
+          transform: [
+            { scale: animValue },
+          ],
+          opacity: animValue,
+        }}
+      >
         <RideCard item={item} />
       </Animated.View>
     );
-  };
+  }, [animatedItems]);
 
   return (
     <LinearGradient
@@ -102,9 +129,9 @@ export default function Rides() {
       </Animated.View>
       <Animated.View style={{ transform: [{ translateY: slideAnim }], flex: 1 }}>
         <FlatList
-          data={recentRides}
+          data={recentRides.slice().reverse()}
           renderItem={renderItem}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -114,6 +141,7 @@ export default function Rides() {
               No rides to display
             </Animated.Text>
           }
+          ListFooterComponent={<View style={styles.footer} />}
         />
       </Animated.View>
     </LinearGradient>
@@ -145,5 +173,8 @@ const styles = StyleSheet.create({
     color: color.whiteColor,
     fontSize: fontSizes.FONT18,
     marginTop: windowHeight(20),
+  },
+  footer: {
+    height: windowHeight(120), // Adjust this value as needed to leave space for the tab bar
   },
 });

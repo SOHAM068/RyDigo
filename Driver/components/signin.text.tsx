@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import React from "react";
 import { commonStyles } from "@/styles/common.style";
 import { external } from "@/styles/external.style";
+import color from "@/themes/app.colors";
 
 export default function SignInText({
   title,
@@ -15,7 +16,7 @@ export default function SignInText({
       <Text
         style={[
           commonStyles.regularTextBigBlack,
-          { color: "#000", textAlign: "left", marginTop: 20 },
+          { color: color.primary, textAlign: "left", marginTop: 20, fontWeight: "700" },
         ]}
       >
         {title ? title : "Join to take your ride 😃"}
@@ -31,5 +32,3 @@ export default function SignInText({
     </>
   );
 }
-
-const styles = StyleSheet.create({});

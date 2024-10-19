@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet } from "react-native";
 import React from "react";
+import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "@react-navigation/native";
+import RNPickerSelect from "react-native-picker-select";
 import fonts from "@/themes/app.fonts";
 import { windowHeight, windowWidth } from "@/themes/app.constant";
 import color from "@/themes/app.colors";
-import RNPickerSelect from "react-native-picker-select";
 
 interface InputProps {
   title?: string;
@@ -26,52 +26,64 @@ export default function SelectInput({
   showWarning,
 }: InputProps) {
   const { colors } = useTheme();
+
   return (
-    <View>
+    <View style={styles.container}>
       {title && (
         <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       )}
-      <RNPickerSelect
-        onValueChange={onValueChange}
-        items={items}
-        placeholder={{ label: value }}
-        style={{
-          inputIOS: {
-            ...styles.input,
-            backgroundColor: color.lightGray,
-            borderColor: colors.border,
-            height: windowHeight(39),
-          },
-          inputAndroid: {
-            ...styles.input,
-            backgroundColor: color.lightGray,
-            borderColor: colors.border,
-            height: windowHeight(39),
-          },
-        }}
-        value={value}
-      />
-      {showWarning && <Text style={[styles.warning]}>{warning}</Text>}
+      <View style={styles.inputContainer}>
+        <RNPickerSelect
+          onValueChange={onValueChange}
+          items={items}
+          placeholder={{ label: placeholder, value: null }}
+          style={pickerSelectStyles}
+          value={value}
+        />
+      </View>
+      {showWarning && <Text style={styles.warning}>{warning}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    marginBottom: windowHeight(16),
+  },
   title: {
     fontFamily: fonts.medium,
-    fontSize: windowWidth(20),
-    marginVertical: windowHeight(8),
+    fontSize: windowWidth(16),
+    marginBottom: windowHeight(8),
+    color: color.primaryText,
   },
-  input: {
-    borderRadius: 5,
+  inputContainer: {
     borderWidth: 1,
-    marginBottom: 5,
-    height: windowHeight(30),
-    color: color.secondaryFont,
-    paddingHorizontal: 10,
+    borderColor: color.border,
+    borderRadius: 8,
+    backgroundColor: color.lightGray,
+    overflow: 'hidden',
   },
   warning: {
     color: color.red,
-    marginTop: 3,
+    fontSize: windowWidth(12),
+    marginTop: windowHeight(4),
+    fontFamily: fonts.regular,
+  },
+});
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: windowWidth(16),
+    paddingVertical: windowHeight(12),
+    paddingHorizontal: windowWidth(10),
+    color: color.primaryText,
+    fontFamily: fonts.regular,
+  },
+  inputAndroid: {
+    fontSize: windowWidth(16),
+    paddingHorizontal: windowWidth(10),
+    paddingVertical: windowHeight(8),
+    color: color.primaryText,
+    fontFamily: fonts.regular,
   },
 });

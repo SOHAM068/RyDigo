@@ -1,7 +1,7 @@
-import { Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React, { useState } from "react";
 import AuthContainer from "@/utils/container/AuthContainer";
-import { windowHeight } from "@/themes/app.constant";
+import { windowHeight, windowWidth } from "@/themes/app.constant";
 import SignInText from "@/components/signin.text";
 import OTPTextInput from "react-native-otp-textinput";
 import { styles } from "./styles";
@@ -93,7 +93,7 @@ export default function PhoneNumberVerificationScreen() {
           <OTPTextInput
             handleTextChange={(code) => setOtp(code)}
             inputCount={4}
-            textInputStyle={styles.otpTextInput}
+            textInputStyle={style.otpTextInput}
             tintColor={color.subtitle}
             autoFocus={false}
           />
@@ -125,3 +125,52 @@ export default function PhoneNumberVerificationScreen() {
     />
   );
 }
+
+
+const style = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: windowWidth(20),
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  otpTextInput: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: color.primary,
+    borderRadius: 10,
+    height: windowHeight(50),
+    width: windowWidth(70),
+    fontSize: windowHeight(24),
+    color: color.blackColor,
+  },
+  buttonContainer: {
+    marginTop: windowHeight(30),
+  },
+  resendContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: windowHeight(20),
+  },
+  resendText: {
+    fontSize: windowHeight(14),
+    color: color.subtitle,
+  },
+  resendLink: {
+    fontSize: windowHeight(14),
+    fontWeight: 'bold',
+    color: color.primary,
+    marginLeft: windowWidth(5),
+  },
+});

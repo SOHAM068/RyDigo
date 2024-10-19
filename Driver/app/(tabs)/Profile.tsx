@@ -6,12 +6,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import color from "@/themes/app.colors";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function Profile() {
   const { driver, loading } = useGetDriverData();
 
   if (loading) {
-    return <View style={styles.loadingContainer}><Text>Loading...</Text></View>;
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
   }
 
   const handleLogout = async () => {
@@ -21,14 +26,19 @@ export default function Profile() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={require("@/assets/images/profileImage/profileUser.png")}
-          style={styles.profilePicture}
-        />
+      <LinearGradient
+        colors={[color.buttonBg, '#4c669f', '#3b5998']}
+        style={styles.header}
+      >
+        <View style={styles.profileImageContainer}>
+          <Image
+            source={require("@/assets/images/profileImage/profileUser.png")}
+            style={styles.profilePicture}
+          />
+        </View>
         <Text style={styles.name}>{driver?.name}</Text>
         <Text style={styles.rating}>⭐ 4.85</Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.infoContainer}>
         <InfoItem icon="mail" label="Email" value={driver?.email} />
@@ -43,7 +53,12 @@ export default function Profile() {
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Log Out</Text>
+        <LinearGradient
+          colors={[color.buttonBg, '#4c669f']}
+          style={styles.logoutGradient}
+        >
+          <Text style={styles.logoutText}>Log Out</Text>
+        </LinearGradient>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -57,7 +72,9 @@ interface InfoItemProps {
 
 const InfoItem: React.FC<InfoItemProps> = ({ icon, label, value }) => (
   <View style={styles.infoItem}>
-    <Ionicons name={icon as any} size={24} color={color.buttonBg} style={styles.infoIcon} />
+    <View style={styles.iconContainer}>
+      <Ionicons name={icon as any} size={24} color={color.whiteColor} />
+    </View>
     <View>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
@@ -86,38 +103,65 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: color.whiteColor,
+  },
+  loadingText: {
+    fontSize: fontSizes.FONT18,
+    color: color.buttonBg,
   },
   header: {
     alignItems: 'center',
     paddingTop: windowHeight(60),
-    paddingBottom: windowHeight(20),
-    backgroundColor: color.buttonBg,
+    paddingBottom: windowHeight(30),
+  },
+  profileImageContainer: {
+    padding: windowWidth(5),
+    borderRadius: windowWidth(70),
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginBottom: windowHeight(15),
   },
   profilePicture: {
     width: windowWidth(120),
     height: windowWidth(120),
     borderRadius: windowWidth(60),
-    marginBottom: windowHeight(10),
   },
   name: {
-    fontSize: fontSizes.FONT24,
+    fontSize: fontSizes.FONT28,
     fontWeight: 'bold',
     color: color.whiteColor,
+    marginBottom: windowHeight(5),
   },
   rating: {
-    fontSize: fontSizes.FONT18,
+    fontSize: fontSizes.FONT20,
     color: color.whiteColor,
-    marginTop: windowHeight(5),
   },
   infoContainer: {
     padding: windowWidth(20),
+    backgroundColor: color.whiteColor,
+    borderRadius: 20,
+    marginTop: -windowHeight(20),
+    marginHorizontal: windowWidth(15),
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: windowHeight(15),
+    marginBottom: windowHeight(20),
   },
-  infoIcon: {
+  iconContainer: {
+    width: windowWidth(40),
+    height: windowWidth(40),
+    borderRadius: windowWidth(20),
+    backgroundColor: color.buttonBg,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: windowWidth(15),
   },
   infoLabel: {
@@ -127,32 +171,37 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: fontSizes.FONT16,
     color: color.blackColor,
+    fontWeight: '500',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: windowHeight(20),
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#D3D3D3',
+    marginTop: windowHeight(20),
+    backgroundColor: '#f8f8f8',
+    borderRadius: 20,
+    marginHorizontal: windowWidth(15),
   },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: fontSizes.FONT20,
+    fontSize: fontSizes.FONT24,
     fontWeight: 'bold',
     color: color.buttonBg,
   },
   statLabel: {
     fontSize: fontSizes.FONT14,
     color: '#808080',
+    marginTop: windowHeight(5),
   },
   logoutButton: {
     margin: windowWidth(20),
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  logoutGradient: {
     padding: windowHeight(15),
-    backgroundColor: color.buttonBg,
-    borderRadius: 5,
     alignItems: 'center',
   },
   logoutText: {

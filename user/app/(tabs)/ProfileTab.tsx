@@ -1,136 +1,201 @@
-import React from 'react';
-import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // Make sure to install expo icons or use another icon library
+import React, { useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Animated } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import { useGetUserData } from "@/hooks/useGetUserData";
+import { fontSizes, windowHeight, windowWidth } from "@/themes/app.constant";
+import color from "@/themes/app.colors";
 
-export default function ProfileTab() {
+export default function Profile() {
+  const { user, loading } = useGetUserData();
+  const slideAnim = useRef(new Animated.Value(50)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      friction: 4,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem("accessToken");
+    router.push("/(routes)/LoginRoute");
+  };
+
   return (
     <ScrollView style={styles.container}>
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <Image
-          source={{ uri: 'https://via.placeholder.com/150' }} // Replace with actual profile image
-          style={styles.profileImage}
-        />
-        <View style={styles.profileInfo}>
-          <Text style={styles.name}>John Doe</Text>
-          <Text style={styles.rating}>5.0 ★</Text>
-        </View>
-      </View>
+      <LinearGradient
+        colors={[color.buttonBg, '#4c669f', '#3b5998']}
+        style={styles.header}
+      >
+        <Animated.View style={[styles.profileImageContainer, { transform: [{ translateY: slideAnim }] }]}>
+          <Image
+            source={require("@/assets/images/profileImage/profileUser.png")}
+            style={styles.profilePicture}
+          />
+        </Animated.View>
+        <Animated.Text style={[styles.name, { transform: [{ translateY: slideAnim }] }]}>{user?.name}</Animated.Text>
+        <Animated.Text style={[styles.rating, { transform: [{ translateY: slideAnim }] }]}>⭐ 4.85</Animated.Text>
+      </LinearGradient>
 
-      {/* Account Options */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <TouchableOpacity style={styles.option}>
-          <Ionicons name="person-outline" size={24} color="black" />
-          <Text style={styles.optionText}>Edit Account</Text>
-          <Ionicons name="chevron-forward" size={24} color="gray" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
-          <Ionicons name="card-outline" size={24} color="black" />
-          <Text style={styles.optionText}>Payment Methods</Text>
-          <Ionicons name="chevron-forward" size={24} color="gray" />
-        </TouchableOpacity>
-      </View>
+      <Animated.View style={[styles.infoContainer, { transform: [{ translateY: slideAnim }] }]}>
+        <InfoItem icon="mail" label="Email" value={user?.email} />
+        <InfoItem icon="call" label="Phone" value={user?.phone_number} />
+        <InfoItem icon="flag" label="Country" value={<Text>India 🇮🇳</Text>} />
+      </Animated.View>
 
-      {/* Preferences */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Preferences</Text>
-        <TouchableOpacity style={styles.option}>
-          <Ionicons name="notifications-outline" size={24} color="black" />
-          <Text style={styles.optionText}>Notifications</Text>
-          <Ionicons name="chevron-forward" size={24} color="gray" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
-          <Ionicons name="language-outline" size={24} color="black" />
-          <Text style={styles.optionText}>Language</Text>
-          <Ionicons name="chevron-forward" size={24} color="gray" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Support */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support</Text>
-        <TouchableOpacity style={styles.option}>
-          <Ionicons name="help-circle-outline" size={24} color="black" />
-          <Text style={styles.optionText}>Help Center</Text>
-          <Ionicons name="chevron-forward" size={24} color="gray" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
-          <Ionicons name="information-circle-outline" size={24} color="black" />
-          <Text style={styles.optionText}>About</Text>
-          <Ionicons name="chevron-forward" size={24} color="gray" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Sign Out */}
-      <TouchableOpacity style={styles.signOutButton}>
-        <Text style={styles.signOutText}>Sign Out</Text>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <LinearGradient
+          colors={[color.buttonBg, '#4c669f']}
+          style={styles.logoutGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.logoutText}>Log Out</Text>
+        </LinearGradient>
       </TouchableOpacity>
     </ScrollView>
   );
 }
+
+const InfoItem = ({ icon, label, value }: any) => (
+  <View style={styles.infoItem}>
+    <View style={styles.iconContainer}>
+      <Ionicons name={icon} size={24} color={color.whiteColor} />
+    </View>
+    <View>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f8f8',
   },
-  header: {
-    flexDirection: 'row',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
   },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  loadingText: {
+    fontSize: fontSizes.FONT18,
+    color: '#333333',
+    fontWeight: 'bold',
   },
-  profileInfo: {
-    marginLeft: 20,
+  header: {
+    paddingTop: windowHeight(60),
+    paddingBottom: windowHeight(30),
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  profileImageContainer: {
+    width: windowWidth(120),
+    height: windowWidth(120),
+    borderRadius: windowWidth(60),
+    overflow: 'hidden',
+    marginBottom: windowHeight(15),
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.34,
+    shadowRadius: 6.27,
+  },
+  profilePicture: {
+    width: '100%',
+    height: '100%',
   },
   name: {
-    fontSize: 22,
+    fontSize: fontSizes.FONT24,
     fontWeight: 'bold',
+    color: color.whiteColor,
+    marginBottom: windowHeight(5),
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10
   },
   rating: {
-    fontSize: 16,
-    color: 'gray',
+    fontSize: fontSizes.FONT18,
+    color: color.whiteColor,
+    fontWeight: '500',
   },
-  section: {
-    marginTop: 20,
-    backgroundColor: 'white',
-    paddingVertical: 10,
+  infoContainer: {
+    backgroundColor: color.whiteColor,
+    borderRadius: 20,
+    marginHorizontal: windowWidth(20),
+    marginTop: -windowHeight(20),
+    padding: windowWidth(20),
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 20,
-    marginBottom: 10,
-  },
-  option: {
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    marginBottom: windowHeight(15),
   },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
-    marginLeft: 20,
-  },
-  signOutButton: {
-    margin: 20,
-    backgroundColor: '#e60000',
-    padding: 15,
-    borderRadius: 5,
+  iconContainer: {
+    width: windowWidth(40),
+    height: windowWidth(40),
+    borderRadius: windowWidth(20),
+    backgroundColor: color.buttonBg,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginRight: windowWidth(15),
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
   },
-  signOutText: {
-    color: 'white',
-    fontSize: 18,
+  infoLabel: {
+    fontSize: fontSizes.FONT14,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: fontSizes.FONT16,
+    color: '#333333',
+    fontWeight: '600',
+  },
+  logoutButton: {
+    marginHorizontal: windowWidth(20),
+    marginTop: windowHeight(30),
+    marginBottom: windowHeight(40),
+  },
+  logoutGradient: {
+    borderRadius: 25,
+    padding: windowHeight(15),
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  logoutText: {
+    color: color.whiteColor,
+    fontSize: fontSizes.FONT18,
     fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10
   },
 });
