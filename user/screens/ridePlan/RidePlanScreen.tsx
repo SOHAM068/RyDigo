@@ -537,7 +537,7 @@ export default function RidePlanScreen() {
       () => {
         setKeyboardOpen(false);
         Animated.timing(mapHeight, {
-          toValue: windowHeight(500),
+          toValue: windowHeight(501),
           duration: 300,
           useNativeDriver: false,
         }).start();
